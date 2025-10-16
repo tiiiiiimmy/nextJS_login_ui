@@ -13,6 +13,12 @@ export const validateEmail = (email: string): ValidationResult => {
     return { isValid: false, message: 'Please enter a valid email address' };
   }
 
+  // Only accept Gmail addresses
+  const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+  if (!gmailRegex.test(email)) {
+    return { isValid: false, message: 'Only Gmail addresses are accepted' };
+  }
+
   return { isValid: true };
 };
 

@@ -109,7 +109,7 @@ describe('RegistrationForm', () => {
     const dobInput = screen.getByLabelText(/date of birth/i);
     const termsCheckbox = screen.getByLabelText(/accept the terms/i);
 
-    await userEvent.type(emailInput, 'test@example.com');
+    await userEvent.type(emailInput, 'test@gmail.com');
     await userEvent.type(passwordInput, 'Password1!');
     await userEvent.type(confirmPasswordInput, 'Password1!');
     await userEvent.type(dobInput, '1990-01-01');
@@ -133,7 +133,7 @@ describe('RegistrationForm', () => {
     const dobInput = screen.getByLabelText(/date of birth/i);
     const termsCheckbox = screen.getByLabelText(/accept the terms/i);
 
-    await userEvent.type(emailInput, 'test@example.com');
+    await userEvent.type(emailInput, 'test@gmail.com');
     await userEvent.type(passwordInput, 'Password1!');
     await userEvent.type(confirmPasswordInput, 'Password1!');
     await userEvent.type(dobInput, '1990-01-01');
@@ -160,7 +160,7 @@ describe('RegistrationForm', () => {
     const dobInput = screen.getByLabelText(/date of birth/i);
     const termsCheckbox = screen.getByLabelText(/accept the terms/i);
 
-    await userEvent.type(emailInput, 'test@example.com');
+    await userEvent.type(emailInput, 'test@gmail.com');
     await userEvent.type(passwordInput, 'Password1!');
     await userEvent.type(confirmPasswordInput, 'Password1!');
     await userEvent.type(dobInput, '1990-01-01');

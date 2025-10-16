@@ -22,13 +22,28 @@ describe('validateEmail', () => {
     });
   });
 
-  it('should return valid for correct email format', () => {
-    const validEmails = [
+  it('should return error for non-Gmail addresses', () => {
+    const nonGmailEmails = [
       'test@example.com',
-      'user.name@example.com',
-      'user+tag@example.co.uk',
+      'user.name@yahoo.com',
+      'user+tag@outlook.com',
+      'test@hotmail.com',
     ];
-    validEmails.forEach((email) => {
+    nonGmailEmails.forEach((email) => {
+      const result = validateEmail(email);
+      expect(result.isValid).toBe(false);
+      expect(result.message).toBe('Only Gmail addresses are accepted');
+    });
+  });
+
+  it('should return valid for Gmail addresses', () => {
+    const validGmailEmails = [
+      'test@gmail.com',
+      'user.name@gmail.com',
+      'user+tag@gmail.com',
+      'TEST@GMAIL.COM',
+    ];
+    validGmailEmails.forEach((email) => {
       const result = validateEmail(email);
       expect(result.isValid).toBe(true);
       expect(result.message).toBeUndefined();

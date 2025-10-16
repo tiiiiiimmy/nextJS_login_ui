@@ -184,7 +184,7 @@ export const RegistrationForm: React.FC = () => {
               value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="you@example.com"
+              placeholder="you@gmail.com"
               error={errors.email}
               touched={touchedFields.has('email')}
               required
