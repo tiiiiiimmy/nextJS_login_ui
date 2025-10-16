@@ -157,7 +157,7 @@ export const RegistrationForm: React.FC = () => {
           email: 'This email is already registered',
         });
       }
-    } catch (error) {
+    } catch {
       setFormState('failure');
     } finally {
       setIsSubmitting(false);
