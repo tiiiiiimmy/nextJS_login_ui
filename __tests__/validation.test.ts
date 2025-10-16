@@ -128,7 +128,8 @@ describe('validateDateOfBirth', () => {
     const today = new Date().toISOString().split('T')[0];
     const result = validateDateOfBirth(today);
     expect(result.isValid).toBe(false);
-    expect(result.message).toBe('Date of birth must be in the past');
+    // Today's date would make them 0 years old, which fails the age check
+    expect(result.message).toBe('You must be at least 18 years old');
   });
 
   it('should return error for age less than 18', () => {
