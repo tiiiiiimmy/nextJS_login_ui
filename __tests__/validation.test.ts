@@ -1,10 +1,49 @@
 import {
+  validateFirstName,
+  validateLastName,
   validateEmail,
   validatePassword,
-  validateConfirmPassword,
-  validateDateOfBirth,
-  validateTerms,
 } from '@/lib/validation';
+
+describe('validateFirstName', () => {
+  it('should return error for empty first name', () => {
+    const result = validateFirstName('');
+    expect(result.isValid).toBe(false);
+    expect(result.message).toBe('First name is required');
+  });
+
+  it('should return error for first name less than 2 characters', () => {
+    const result = validateFirstName('A');
+    expect(result.isValid).toBe(false);
+    expect(result.message).toBe('First name must be at least 2 characters');
+  });
+
+  it('should return valid for valid first name', () => {
+    const result = validateFirstName('John');
+    expect(result.isValid).toBe(true);
+    expect(result.message).toBeUndefined();
+  });
+});
+
+describe('validateLastName', () => {
+  it('should return error for empty last name', () => {
+    const result = validateLastName('');
+    expect(result.isValid).toBe(false);
+    expect(result.message).toBe('Last name is required');
+  });
+
+  it('should return error for last name less than 2 characters', () => {
+    const result = validateLastName('D');
+    expect(result.isValid).toBe(false);
+    expect(result.message).toBe('Last name must be at least 2 characters');
+  });
+
+  it('should return valid for valid last name', () => {
+    const result = validateLastName('Doe');
+    expect(result.isValid).toBe(true);
+    expect(result.message).toBeUndefined();
+  });
+});
 
 describe('validateEmail', () => {
   it('should return error for empty email', () => {
@@ -36,12 +75,18 @@ describe('validateEmail', () => {
     });
   });
 
-  it('should return valid for Gmail addresses', () => {
+  it('should return error for test@gmail.com (already registered)', () => {
+    const result = validateEmail('test@gmail.com');
+    expect(result.isValid).toBe(false);
+    expect(result.message).toBe('This email address is already registered');
+  });
+
+  it('should return valid for other Gmail addresses', () => {
     const validGmailEmails = [
-      'test@gmail.com',
+      'user@gmail.com',
       'user.name@gmail.com',
       'user+tag@gmail.com',
-      'TEST@GMAIL.COM',
+      'another.user@gmail.com',
     ];
     validGmailEmails.forEach((email) => {
       const result = validateEmail(email);
@@ -61,7 +106,13 @@ describe('validatePassword', () => {
   it('should return error for password less than 8 characters', () => {
     const result = validatePassword('Pass1!');
     expect(result.isValid).toBe(false);
-    expect(result.message).toBe('Password must be at least 8 characters long');
+    expect(result.message).toBe('Password must be at least 8 characters');
+  });
+
+  it('should return error for password more than 30 characters', () => {
+    const result = validatePassword('Password1!Password1!Password1!1');
+    expect(result.isValid).toBe(false);
+    expect(result.message).toBe('Password must not exceed 30 characters');
   });
 
   it('should return error for password without uppercase letter', () => {
@@ -89,100 +140,11 @@ describe('validatePassword', () => {
   });
 
   it('should return valid for password meeting all requirements', () => {
-    const validPasswords = ['Password1!', 'MyP@ssw0rd', 'Secur3#Pass'];
+    const validPasswords = ['Password1!', 'MyP@ssw0rd', 'Secur3#Pass', 'Test123!'];
     validPasswords.forEach((password) => {
       const result = validatePassword(password);
       expect(result.isValid).toBe(true);
       expect(result.message).toBeUndefined();
     });
-  });
-});
-
-describe('validateConfirmPassword', () => {
-  it('should return error for empty confirm password', () => {
-    const result = validateConfirmPassword('Password1!', '');
-    expect(result.isValid).toBe(false);
-    expect(result.message).toBe('Please confirm your password');
-  });
-
-  it('should return error when passwords do not match', () => {
-    const result = validateConfirmPassword('Password1!', 'Password2!');
-    expect(result.isValid).toBe(false);
-    expect(result.message).toBe('Passwords do not match');
-  });
-
-  it('should return valid when passwords match', () => {
-    const result = validateConfirmPassword('Password1!', 'Password1!');
-    expect(result.isValid).toBe(true);
-    expect(result.message).toBeUndefined();
-  });
-});
-
-describe('validateDateOfBirth', () => {
-  it('should return error for empty date', () => {
-    const result = validateDateOfBirth('');
-    expect(result.isValid).toBe(false);
-    expect(result.message).toBe('Date of birth is required');
-  });
-
-  it('should return error for invalid date format', () => {
-    const result = validateDateOfBirth('invalid-date');
-    expect(result.isValid).toBe(false);
-    expect(result.message).toBe('Please enter a valid date');
-  });
-
-  it('should return error for future date', () => {
-    const futureDate = new Date();
-    futureDate.setFullYear(futureDate.getFullYear() + 1);
-    const result = validateDateOfBirth(futureDate.toISOString().split('T')[0]);
-    expect(result.isValid).toBe(false);
-    expect(result.message).toBe('Date of birth must be in the past');
-  });
-
-  it('should return error for today\'s date', () => {
-    const today = new Date().toISOString().split('T')[0];
-    const result = validateDateOfBirth(today);
-    expect(result.isValid).toBe(false);
-    // Today's date would make them 0 years old, which fails the age check
-    expect(result.message).toBe('You must be at least 18 years old');
-  });
-
-  it('should return error for age less than 18', () => {
-    const date = new Date();
-    date.setFullYear(date.getFullYear() - 17);
-    const result = validateDateOfBirth(date.toISOString().split('T')[0]);
-    expect(result.isValid).toBe(false);
-    expect(result.message).toBe('You must be at least 18 years old');
-  });
-
-  it('should return valid for date over 18 years ago', () => {
-    const date = new Date();
-    date.setFullYear(date.getFullYear() - 25);
-    const result = validateDateOfBirth(date.toISOString().split('T')[0]);
-    expect(result.isValid).toBe(true);
-    expect(result.message).toBeUndefined();
-  });
-
-  it('should return valid for someone exactly 18 years old', () => {
-    const date = new Date();
-    date.setFullYear(date.getFullYear() - 18);
-    date.setDate(date.getDate() - 1); // One day past their 18th birthday
-    const result = validateDateOfBirth(date.toISOString().split('T')[0]);
-    expect(result.isValid).toBe(true);
-    expect(result.message).toBeUndefined();
-  });
-});
-
-describe('validateTerms', () => {
-  it('should return error when terms are not accepted', () => {
-    const result = validateTerms(false);
-    expect(result.isValid).toBe(false);
-    expect(result.message).toBe('You must accept the terms and conditions');
-  });
-
-  it('should return valid when terms are accepted', () => {
-    const result = validateTerms(true);
-    expect(result.isValid).toBe(true);
-    expect(result.message).toBeUndefined();
   });
 });

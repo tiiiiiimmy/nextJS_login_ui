@@ -7,12 +7,33 @@ describe('RegistrationForm', () => {
   it('should render all form fields', () => {
     render(<RegistrationForm />);
 
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/date of birth/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/accept the terms/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
+  });
+
+  it('should show validation error for empty first name on blur', async () => {
+    render(<RegistrationForm />);
+    const firstNameInput = screen.getByLabelText(/first name/i);
+
+    fireEvent.blur(firstNameInput);
+
+    await waitFor(() => {
+      expect(screen.getByText(/first name is required/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should show validation error for empty last name on blur', async () => {
+    render(<RegistrationForm />);
+    const lastNameInput = screen.getByLabelText(/last name/i);
+
+    fireEvent.blur(lastNameInput);
+
+    await waitFor(() => {
+      expect(screen.getByText(/last name is required/i)).toBeInTheDocument();
+    });
   });
 
   it('should show validation error for invalid email on blur', async () => {
@@ -27,6 +48,30 @@ describe('RegistrationForm', () => {
     });
   });
 
+  it('should show validation error for non-Gmail address', async () => {
+    render(<RegistrationForm />);
+    const emailInput = screen.getByLabelText(/email address/i);
+
+    await userEvent.type(emailInput, 'test@yahoo.com');
+    fireEvent.blur(emailInput);
+
+    await waitFor(() => {
+      expect(screen.getByText(/only gmail addresses are accepted/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should show error for test@gmail.com as already registered', async () => {
+    render(<RegistrationForm />);
+    const emailInput = screen.getByLabelText(/email address/i);
+
+    await userEvent.type(emailInput, 'test@gmail.com');
+    fireEvent.blur(emailInput);
+
+    await waitFor(() => {
+      expect(screen.getByText(/this email address is already registered/i)).toBeInTheDocument();
+    });
+  });
+
   it('should show validation error for weak password on blur', async () => {
     render(<RegistrationForm />);
     const passwordInput = screen.getByLabelText(/^password/i);
@@ -35,25 +80,23 @@ describe('RegistrationForm', () => {
     fireEvent.blur(passwordInput);
 
     await waitFor(() => {
-      expect(screen.getByText(/password must be at least 8 characters long/i)).toBeInTheDocument();
+      expect(screen.getByText(/password must be at least 8 characters/i)).toBeInTheDocument();
     });
   });
 
-  it('should show validation error when passwords do not match', async () => {
+  it('should show validation error for password over 30 characters', async () => {
     render(<RegistrationForm />);
     const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
 
-    await userEvent.type(passwordInput, 'Password1!');
-    await userEvent.type(confirmPasswordInput, 'Password2!');
-    fireEvent.blur(confirmPasswordInput);
+    await userEvent.type(passwordInput, 'Password1!Password1!Password1!1');
+    fireEvent.blur(passwordInput);
 
     await waitFor(() => {
-      expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
+      expect(screen.getByText(/password must not exceed 30 characters/i)).toBeInTheDocument();
     });
   });
 
-  it('should update password requirements indicators as user types', async () => {
+  it('should update password requirements indicators in real-time as user types', async () => {
     render(<RegistrationForm />);
     const passwordInput = screen.getByLabelText(/^password/i);
 
@@ -70,7 +113,7 @@ describe('RegistrationForm', () => {
     expect(screen.getByText(/at least one special character/i)).toHaveClass('requirement-met');
 
     await userEvent.type(passwordInput, 'sswo');
-    expect(screen.getByText(/at least 8 characters long/i)).toHaveClass('requirement-met');
+    expect(screen.getByText(/between 8 and 30 characters/i)).toHaveClass('requirement-met');
   });
 
   it('should show error when trying to submit with empty fields', async () => {
@@ -80,11 +123,10 @@ describe('RegistrationForm', () => {
     await userEvent.click(submitButton);
 
     await waitFor(() => {
+      expect(screen.getByText(/first name is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/last name is required/i)).toBeInTheDocument();
       expect(screen.getByText(/email is required/i)).toBeInTheDocument();
       expect(screen.getByText(/password is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/please confirm your password/i)).toBeInTheDocument();
-      expect(screen.getByText(/date of birth is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/you must accept the terms and conditions/i)).toBeInTheDocument();
     });
   });
 
@@ -95,7 +137,7 @@ describe('RegistrationForm', () => {
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/please fix the errors above and try again/i)).toBeInTheDocument();
+      expect(screen.getByText(/please check the information above and try again/i)).toBeInTheDocument();
     });
   });
 
@@ -103,17 +145,15 @@ describe('RegistrationForm', () => {
     render(<RegistrationForm />);
 
     // Fill in valid form data
+    const firstNameInput = screen.getByLabelText(/first name/i);
+    const lastNameInput = screen.getByLabelText(/last name/i);
     const emailInput = screen.getByLabelText(/email address/i);
     const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const dobInput = screen.getByLabelText(/date of birth/i);
-    const termsCheckbox = screen.getByLabelText(/accept the terms/i);
 
-    await userEvent.type(emailInput, 'test@gmail.com');
+    await userEvent.type(firstNameInput, 'John');
+    await userEvent.type(lastNameInput, 'Doe');
+    await userEvent.type(emailInput, 'john@gmail.com');
     await userEvent.type(passwordInput, 'Password1!');
-    await userEvent.type(confirmPasswordInput, 'Password1!');
-    await userEvent.type(dobInput, '1990-01-01');
-    await userEvent.click(termsCheckbox);
 
     const submitButton = screen.getByRole('button', { name: /create account/i });
     await userEvent.click(submitButton);
@@ -127,24 +167,22 @@ describe('RegistrationForm', () => {
     render(<RegistrationForm />);
 
     // Fill in valid form data
+    const firstNameInput = screen.getByLabelText(/first name/i);
+    const lastNameInput = screen.getByLabelText(/last name/i);
     const emailInput = screen.getByLabelText(/email address/i);
     const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const dobInput = screen.getByLabelText(/date of birth/i);
-    const termsCheckbox = screen.getByLabelText(/accept the terms/i);
 
-    await userEvent.type(emailInput, 'test@gmail.com');
+    await userEvent.type(firstNameInput, 'John');
+    await userEvent.type(lastNameInput, 'Doe');
+    await userEvent.type(emailInput, 'john@gmail.com');
     await userEvent.type(passwordInput, 'Password1!');
-    await userEvent.type(confirmPasswordInput, 'Password1!');
-    await userEvent.type(dobInput, '1990-01-01');
-    await userEvent.click(termsCheckbox);
 
     const submitButton = screen.getByRole('button', { name: /create account/i });
     await userEvent.click(submitButton);
 
     await waitFor(
       () => {
-        expect(screen.getByText(/registration successful/i)).toBeInTheDocument();
+        expect(screen.getByText(/your account has been created successfully/i)).toBeInTheDocument();
       },
       { timeout: 3000 }
     );
@@ -154,17 +192,15 @@ describe('RegistrationForm', () => {
     render(<RegistrationForm />);
 
     // Fill in valid form data
+    const firstNameInput = screen.getByLabelText(/first name/i);
+    const lastNameInput = screen.getByLabelText(/last name/i);
     const emailInput = screen.getByLabelText(/email address/i);
     const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const dobInput = screen.getByLabelText(/date of birth/i);
-    const termsCheckbox = screen.getByLabelText(/accept the terms/i);
 
-    await userEvent.type(emailInput, 'test@gmail.com');
+    await userEvent.type(firstNameInput, 'John');
+    await userEvent.type(lastNameInput, 'Doe');
+    await userEvent.type(emailInput, 'john@gmail.com');
     await userEvent.type(passwordInput, 'Password1!');
-    await userEvent.type(confirmPasswordInput, 'Password1!');
-    await userEvent.type(dobInput, '1990-01-01');
-    await userEvent.click(termsCheckbox);
 
     const submitButton = screen.getByRole('button', { name: /create account/i });
     await userEvent.click(submitButton);
@@ -172,37 +208,33 @@ describe('RegistrationForm', () => {
     expect(submitButton).toBeDisabled();
   });
 
-  it('should validate date of birth for minimum age requirement', async () => {
+  it('should accept valid Gmail addresses', async () => {
     render(<RegistrationForm />);
-    const dobInput = screen.getByLabelText(/date of birth/i);
+    const emailInput = screen.getByLabelText(/email address/i);
 
-    // Enter a date less than 18 years ago
-    const date = new Date();
-    date.setFullYear(date.getFullYear() - 17);
-    await userEvent.type(dobInput, date.toISOString().split('T')[0]);
-    fireEvent.blur(dobInput);
+    await userEvent.type(emailInput, 'valid.user@gmail.com');
+    fireEvent.blur(emailInput);
 
     await waitFor(() => {
-      expect(screen.getByText(/you must be at least 18 years old/i)).toBeInTheDocument();
+      expect(screen.queryByText(/only gmail addresses are accepted/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/please enter a valid email address/i)).not.toBeInTheDocument();
     });
   });
 
-  it('should revalidate confirm password when password changes', async () => {
+  it('should validate all password requirements correctly', async () => {
     render(<RegistrationForm />);
     const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
 
-    // Set matching passwords
-    await userEvent.type(passwordInput, 'Password1!');
-    await userEvent.type(confirmPasswordInput, 'Password1!');
-    fireEvent.blur(confirmPasswordInput);
+    // Test password with all requirements
+    await userEvent.type(passwordInput, 'ValidPass1!');
+    fireEvent.blur(passwordInput);
 
-    // Change password
-    await userEvent.clear(passwordInput);
-    await userEvent.type(passwordInput, 'DifferentPass1!');
-
+    // Check that all requirements are met (no error message, all requirements shown as met)
     await waitFor(() => {
-      expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
+      const allRequirements = screen.getAllByRole('listitem');
+      allRequirements.forEach((item) => {
+        expect(item).toHaveClass('requirement-met');
+      });
     });
   });
 });
