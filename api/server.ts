@@ -5,8 +5,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import usersRouter from './routes/users';
 
-// Explicitly load .env from project root
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+// Explicitly load .env from project root (works with tsx runtime)
+const envPath = path.resolve(process.cwd(), ".env");
+dotenv.config({ path: envPath });
 
 const app: Application = express();
 
