@@ -3,7 +3,28 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RegistrationForm } from '@/components/RegistrationForm';
 
+// Mock fetch API
+global.fetch = jest.fn();
+
 describe('RegistrationForm', () => {
+  beforeEach(() => {
+    // Reset mocks before each test
+    (global.fetch as jest.Mock).mockClear();
+
+    // Default mock response for successful registration with delay
+    (global.fetch as jest.Mock).mockImplementation(() =>
+      new Promise((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              ok: true,
+              json: async () => ({ success: true, data: { id: 1, email: 'test@gmail.com' } }),
+            }),
+          100
+        )
+      )
+    );
+  });
   it('should render all form fields', () => {
     render(<RegistrationForm />);
 
