@@ -116,15 +116,23 @@ export const RegistrationForm: React.FC = () => {
       return;
     }
 
-    // Simulate API call
+    // Call the real API
     try {
-      // Show warning state (simulating processing)
+      // Show warning state (processing)
       setFormState('warning');
 
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch('http://localhost:5001/api/users/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-      // Simulate success (90% success rate)
-      if (Math.random() > 0.1) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success
         setFormState('success');
         // Reset form on success
         setTimeout(() => {
@@ -134,14 +142,26 @@ export const RegistrationForm: React.FC = () => {
           setFormState('idle');
         }, 3000);
       } else {
-        // Simulate server error
+        // Handle validation errors from API
         setFormState('failure');
-        setErrors({
-          email: 'This email is already registered',
-        });
+        if (data.errors && Array.isArray(data.errors)) {
+          const newErrors: FieldError = {};
+          data.errors.forEach((error: { field: string; message: string }) => {
+            newErrors[error.field as keyof FormData] = error.message;
+          });
+          setErrors(newErrors);
+        } else {
+          setErrors({
+            email: 'An error occurred during registration',
+          });
+        }
       }
-    } catch {
+    } catch (error) {
+      // Network or other error
       setFormState('failure');
+      setErrors({
+        email: 'Unable to connect to server. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
