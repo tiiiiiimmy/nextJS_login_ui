@@ -1,78 +1,225 @@
-import { Pool, PoolConfig } from 'pg';
-import dotenv from 'dotenv';
+// api/db/connection.ts
+import { Pool, PoolConfig, PoolClient, QueryResult } from "pg";
+import dotenv from "dotenv";
 
-// Load environment variables
 dotenv.config();
+console.log("[BOOT] USE_DB=", process.env.USE_DB);
+console.log("[BOOT] DATABASE_URL exists =", Boolean(process.env.DATABASE_URL));
+console.log("[BOOT] DB_HOST=", process.env.DB_HOST);
 
-// Database connection configuration
-const poolConfig: PoolConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'goldenset_db',
-  user: process.env.DB_USER,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection fails
-};
+/**
+ * Whether the DB layer is enabled. In sandbox/demo environments you may set USE_DB=false
+ * to disable real DB access and fall back to in-memory storage in your model layer.
+ * Default: true (enabled)
+ */
+export const isDbEnabled =
+  (process.env.USE_DB ?? "true").toLowerCase() !== "false";
 
-// Only add password if it's provided (for peer authentication support)
-if (process.env.DB_PASSWORD) {
-  poolConfig.password = process.env.DB_PASSWORD;
+/**
+ * Auto-detect if SSL should be enabled for the connection.
+ * - Many hosted Postgres providers (Supabase, Neon, Render, Railway, AWS RDS) require SSL.
+ * - If DB_SSL=true, force SSL.
+ * - If the connection string contains "sslmode=require", SSL is required.
+ * - Otherwise, enable SSL for common hosted domains by default.
+ */
+function shouldUseSSL(cs?: string): boolean {
+  if ((process.env.DB_SSL ?? "").toLowerCase() === "true") return true;
+  if (!cs) return false;
+  if (/sslmode=require/i.test(cs)) return true;
+  if (
+    /(\.supabase\.co|\.neon\.tech|\.railway\.app|\.render\.com|rds\.amazonaws\.com)/i.test(
+      cs
+    )
+  ) {
+    return true;
+  }
+  return false;
 }
 
-// Create a connection pool
-const pool = new Pool(poolConfig);
+/**
+ * Build the Pool configuration.
+ * Priority of configuration:
+ *   1) DATABASE_URL (single connection string)
+ *   2) Discrete env vars: DB_HOST / DB_PORT / DB_NAME / DB_USER / DB_PASSWORD
+ * Notes:
+ * - In CodeSandbox or serverless environments, prefer DATABASE_URL.
+ * - Supabase requires SSL (rejectUnauthorized=false is common).
+ */
+function buildPoolConfig(): PoolConfig {
+  const connectionString = process.env.DATABASE_URL?.trim();
 
-// Handle pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
+  if (connectionString) {
+    const useSSL = shouldUseSSL(connectionString);
+    const cfg: PoolConfig = {
+      connectionString,
+      max: parseInt(process.env.DB_POOL_MAX || "20", 10),
+      idleTimeoutMillis: parseInt(
+        process.env.DB_IDLE_TIMEOUT_MS || "30000",
+        10
+      ),
+      connectionTimeoutMillis: parseInt(
+        process.env.DB_CONN_TIMEOUT_MS || "5000",
+        10
+      ),
+    };
+    if (useSSL) {
+      // Most hosted providers require SSL but will use self-signed certs.
+      cfg.ssl = { rejectUnauthorized: false };
+    }
+    return cfg;
+  }
+
+  // Fallback to discrete env variables (local dev)
+  const host = process.env.DB_HOST || "localhost";
+  const port = parseInt(process.env.DB_PORT || "5432", 10);
+  const database = process.env.DB_NAME || "goldenset_db";
+  const user = process.env.DB_USER || "postgres";
+  const password = process.env.DB_PASSWORD || undefined;
+
+  const cfg: PoolConfig = {
+    host,
+    port,
+    database,
+    user,
+    password,
+    max: parseInt(process.env.DB_POOL_MAX || "20", 10),
+    idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT_MS || "30000", 10),
+    connectionTimeoutMillis: parseInt(
+      process.env.DB_CONN_TIMEOUT_MS || "5000",
+      10
+    ),
+  };
+
+  // If host hints a hosted provider, enable SSL automatically.
+  if (shouldUseSSL(host)) {
+    cfg.ssl = { rejectUnauthorized: false };
+  }
+
+  return cfg;
+}
+
+// Create the pool only if DB is enabled. Otherwise keep it null and let callers decide.
+let pool: Pool | null = null;
+
+if (isDbEnabled) {
+  const poolConfig = buildPoolConfig();
+  pool = new Pool(poolConfig);
+
+  // Log a friendly summary (without secrets)
+  const source = process.env.DATABASE_URL
+    ? "DATABASE_URL"
+    : `${process.env.DB_HOST ?? "localhost"}:${process.env.DB_PORT ?? "5432"}`;
+  console.log(
+    `[DB] Pool created from ${source} (ssl=${Boolean(
+      (poolConfig as any).ssl
+    )}, max=${poolConfig.max}, idleTimeout=${poolConfig.idleTimeoutMillis}ms)`
+  );
+
+  // Do NOT hard-exit on idle error in ephemeral environments; just log it.
+  pool.on("error", (err) => {
+    console.error("[DB] Unexpected error on idle client:", err);
+  });
+} else {
+  console.log(
+    "[DB] Disabled (USE_DB=false). Models should fall back to in-memory storage."
+  );
+}
 
 /**
- * Execute a query with parameters
+ * Get the active pool. Throws an explicit error if DB is disabled to allow callers
+ * to fallback to an in-memory implementation gracefully.
  */
-export const query = async (text: string, params?: any[]) => {
+export function getPool(): Pool {
+  if (!isDbEnabled || !pool) {
+    throw new Error("DB disabled (USE_DB=false) or pool not initialized.");
+  }
+  return pool;
+}
+
+/**
+ * Execute a parametrized SQL query.
+ * - Avoid logging full text for sensitive queries in production.
+ * - Returns the raw QueryResult from 'pg'.
+ */
+export async function query<T = any>(
+  text: string,
+  params?: any[]
+): Promise<QueryResult<T>> {
+  if (!isDbEnabled || !pool) {
+    throw new Error("DB disabled (USE_DB=false) or pool not initialized.");
+  }
+
   const start = Date.now();
+  let client: PoolClient | null = null;
+
   try {
-    const res = await pool.query(text, params);
+    client = await pool.connect();
+    const res = await client.query<T>(text, params);
     const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
+
+    // Safe-ish logging: do not print parameters in production logs.
+    if ((process.env.NODE_ENV ?? "development") !== "production") {
+      console.log("[DB] query", {
+        text,
+        durationMs: duration,
+        rows: res.rowCount,
+      });
+    } else {
+      console.log("[DB] query", { durationMs: duration, rows: res.rowCount });
+    }
+
     return res;
   } catch (error) {
-    console.error('Query error', { text, error });
+    // Be explicit in logs to help debugging connectivity issues in sandbox.
+    console.error("[DB] Query error:", {
+      text,
+      error: (error as Error)?.message ?? error,
+    });
     throw error;
+  } finally {
+    if (client) client.release();
   }
-};
+}
 
 /**
- * Get a client from the pool for transactions
+ * Get a dedicated client from the pool (useful for transactions).
+ * - Includes a watchdog timer to warn if a client is held for too long.
  */
-export const getClient = async () => {
+export async function getClient(): Promise<PoolClient> {
+  if (!isDbEnabled || !pool) {
+    throw new Error("DB disabled (USE_DB=false) or pool not initialized.");
+  }
+
   const client = await pool.connect();
-  const query = client.query.bind(client);
   const release = client.release.bind(client);
 
-  // Set a timeout of 5 seconds, after which we will log this client's last query
-  const timeout = setTimeout(() => {
-    console.error('A client has been checked out for more than 5 seconds!');
-  }, 5000);
+  // Warn if a client is held for too long (helps spotting leaked clients).
+  const timeoutMs = parseInt(process.env.DB_CLIENT_HOLD_WARN_MS || "5000", 10);
+  const timer = setTimeout(() => {
+    console.error(
+      `[DB] A client has been checked out for more than ${timeoutMs}ms!`
+    );
+  }, timeoutMs);
 
-  // Monkey patch the client.release method to clear our timeout
+  // Monkey-patch release to clear the watchdog timer
   client.release = () => {
-    clearTimeout(timeout);
+    clearTimeout(timer);
     client.release = release;
     return release();
   };
 
   return client;
-};
+}
 
 /**
- * Close the pool
+ * Gracefully close the pool (useful in tests or shutdown hooks).
  */
-export const closePool = async () => {
-  await pool.end();
-};
+export async function closePool(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    pool = null;
+    console.log("[DB] Pool closed.");
+  }
+}
 
 export default pool;
