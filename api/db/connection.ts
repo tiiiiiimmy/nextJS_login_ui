@@ -1,8 +1,10 @@
 // api/db/connection.ts
 import { Pool, PoolConfig, PoolClient, QueryResult } from "pg";
 import dotenv from "dotenv";
+import path from "path";
 
-dotenv.config();
+// Explicitly load .env from project root
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 console.log("[BOOT] USE_DB=", process.env.USE_DB);
 console.log("[BOOT] DATABASE_URL exists =", Boolean(process.env.DATABASE_URL));
 console.log("[BOOT] DB_HOST=", process.env.DB_HOST);

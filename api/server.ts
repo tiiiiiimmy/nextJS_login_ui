@@ -2,9 +2,11 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors, { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import usersRouter from './routes/users';
 
-dotenv.config();
+// Explicitly load .env from project root
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app: Application = express();
 
