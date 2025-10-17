@@ -125,6 +125,287 @@ The form features Goldenset's vibrant brand identity:
 3. **Failure State**: Displayed when validation fails with specific error messages
 4. **Success State**: Shown after successful submission with success message and auto-reset after 3 seconds
 
+## API Backend (Extra Credit)
+
+This project includes a full Node.js REST API backend with PostgreSQL database integration.
+
+### API Architecture
+
+```
+/var/www/nextjs-login-ui/api/
+├── server.ts              # Express server setup
+├── db/
+│   └── connection.ts      # PostgreSQL connection pool
+├── models/
+│   └── user.ts           # User model with CRUD operations
+├── middleware/
+│   └── validation.ts     # Server-side validation middleware
+└── routes/
+    └── users.ts          # User registration endpoints
+```
+
+### Database Setup
+
+1. **Install PostgreSQL**:
+```bash
+sudo apt install postgresql postgresql-contrib
+```
+
+2. **Start PostgreSQL**:
+```bash
+sudo service postgresql start
+```
+
+3. **Create Database and Schema**:
+```bash
+sudo -u postgres createdb goldenset_db
+cat database/schema.sql | sudo -u postgres psql goldenset_db
+```
+
+4. **Set PostgreSQL Password**:
+```bash
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+```
+
+5. **Configure Environment Variables**:
+Create a `.env` file in the project root:
+```env
+# PostgreSQL Database Configuration
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/goldenset_db
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=goldenset_db
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+# API Configuration
+API_PORT=3001
+NODE_ENV=development
+
+# Frontend Configuration
+FRONTEND_URL=http://localhost:3000
+```
+
+### Database Schema
+
+The `users` table schema:
+
+```sql
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,  -- Hashed with bcrypt
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### API Endpoints
+
+#### POST /api/users/register
+
+Register a new user account.
+
+**Request Body**:
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@gmail.com",
+  "password": "Password1!"
+}
+```
+
+**Success Response (201)**:
+```json
+{
+  "success": true,
+  "message": "Registration successful",
+  "data": {
+    "id": 1,
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@gmail.com",
+    "createdAt": "2025-10-18T10:30:00.000Z"
+  }
+}
+```
+
+**Validation Error Response (400)**:
+```json
+{
+  "success": false,
+  "errors": [
+    {
+      "field": "email",
+      "message": "Only Gmail addresses are accepted"
+    }
+  ]
+}
+```
+
+**Conflict Error Response (409)**:
+```json
+{
+  "success": false,
+  "errors": [
+    {
+      "field": "email",
+      "message": "This email address is already registered"
+    }
+  ]
+}
+```
+
+#### GET /api/users
+
+Get all registered users (for testing/admin purposes).
+
+**Success Response (200)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@gmail.com",
+      "createdAt": "2025-10-18T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+#### DELETE /api/users/:email
+
+Delete a user by email (for testing purposes).
+
+**Success Response (200)**:
+```json
+{
+  "success": true,
+  "message": "User deleted successfully"
+}
+```
+
+**Not Found Response (404)**:
+```json
+{
+  "success": false,
+  "message": "User not found"
+}
+```
+
+#### GET /health
+
+Health check endpoint to verify API is running.
+
+**Success Response (200)**:
+```json
+{
+  "success": true,
+  "message": "API is running",
+  "timestamp": "2025-10-18T10:30:00.000Z"
+}
+```
+
+### Server-Side Validation
+
+The API implements the same validation rules as the frontend:
+
+- **First Name**: Required, minimum 2 characters, maximum 100 characters
+- **Last Name**: Required, minimum 2 characters, maximum 100 characters
+- **Email**: Required, valid format, Gmail only (@gmail.com), test@gmail.com rejected
+- **Password**: Required, 8-30 characters, must contain uppercase, lowercase, number, and special character
+
+### Security Features
+
+- **Password Hashing**: Passwords are hashed using bcrypt with 10 salt rounds before storage
+- **SQL Injection Protection**: Parameterized queries using pg library
+- **CORS**: Configured to only allow requests from the frontend (localhost:3000)
+- **Input Sanitization**: All inputs are trimmed and validated
+- **Email Normalization**: Emails are stored in lowercase
+
+### Running the API
+
+#### Development Mode
+
+Run both frontend and API concurrently:
+```bash
+npm run dev:all
+```
+
+Or run them separately:
+```bash
+# Terminal 1 - Frontend
+npm run dev
+
+# Terminal 2 - API
+npm run dev:api
+```
+
+The API will be available at [http://localhost:3001](http://localhost:3001)
+
+#### Production Mode
+
+1. Build the API:
+```bash
+npm run build:api
+```
+
+2. Start the API:
+```bash
+npm run start:api
+```
+
+### API Testing
+
+The project includes comprehensive API tests with **31 passing tests**:
+
+#### Validation Middleware Tests (`__tests__/api/validation.test.ts`) - 17 tests
+
+- First name validation (missing, too short, trimming)
+- Last name validation (missing, too short, trimming)
+- Email validation (missing, invalid format, non-Gmail, test@gmail.com)
+- Password validation (missing, too short, too long, missing character types)
+- Multiple field validation errors
+- Whitespace trimming
+
+#### API Endpoint Tests (`__tests__/api/users.test.ts`) - 14 tests
+
+- POST /api/users/register with valid/invalid data
+- Email uniqueness enforcement
+- Database error handling
+- GET /api/users endpoint
+- DELETE /api/users/:email endpoint
+- Health check endpoint
+- 404 handling for unknown routes
+
+Run API tests:
+```bash
+npm run test:api
+```
+
+Run all tests (frontend + API):
+```bash
+npm run test:all
+```
+
+### Test Database Connection
+
+Test the PostgreSQL connection:
+```bash
+node test-db-connection.js
+```
+
+This will verify:
+- Database connection is working
+- Users table exists
+- Table schema is correct
+
 ## Getting Started
 
 ### Prerequisites
@@ -154,17 +435,34 @@ npm run dev
 
 ### Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
+**Frontend:**
+- `npm run dev` - Start Next.js development server (http://localhost:3000)
+- `npm run build` - Build frontend for production
 - `npm start` - Start production server
 - `npm run lint` - Run ESLint
-- `npm test` - Run tests
+
+**API:**
+- `npm run dev:api` - Start API development server (http://localhost:3001)
+- `npm run dev:all` - Start both frontend and API concurrently
+- `npm run build:api` - Build API for production
+- `npm run start:api` - Start API production server
+
+**Testing:**
+- `npm test` - Run frontend tests (35 tests)
+- `npm run test:api` - Run API tests (31 tests)
+- `npm run test:all` - Run all tests (66 tests total)
 - `npm run test:watch` - Run tests in watch mode
 - `npm run test:coverage` - Run tests with coverage report
 
+**Database:**
+- `npm run db:setup` - Run database schema setup
+- `node test-db-connection.js` - Test PostgreSQL connection
+
 ## Testing
 
-The project includes comprehensive test coverage with **35 passing tests**:
+The project includes comprehensive test coverage with **66 passing tests** (35 frontend + 31 API):
+
+### Frontend Tests (35 tests)
 
 ### Validation Tests (`__tests__/validation.test.ts`) - 10 tests
 
@@ -205,12 +503,83 @@ The project includes comprehensive test coverage with **35 passing tests**:
 - Valid Gmail address acceptance
 - Complete password requirement validation
 
-Run tests with:
+Run frontend tests with:
 ```bash
 npm test
 ```
 
-**Test Results**: ✅ All 35 tests pass successfully in ~3.3 seconds
+**Test Results**: ✅ All 35 frontend tests pass successfully in ~2.6 seconds
+
+### API Tests (31 tests)
+
+#### Validation Middleware Tests (`__tests__/api/validation.test.ts`) - 17 tests
+
+- **First Name Validation**:
+  - Missing first name
+  - First name too short (< 2 characters)
+  - Whitespace trimming
+
+- **Last Name Validation**:
+  - Missing last name
+  - Last name too short (< 2 characters)
+  - Whitespace trimming
+
+- **Email Validation**:
+  - Missing email
+  - Invalid email format
+  - Non-Gmail addresses rejected
+  - test@gmail.com rejected (already registered)
+  - Whitespace trimming
+
+- **Password Validation**:
+  - Missing password
+  - Password too short (< 8 characters)
+  - Password too long (> 30 characters)
+  - Missing uppercase letter
+  - Missing lowercase letter
+  - Missing number
+  - Missing special character
+
+- **Multiple Field Validation**: Tests multiple validation errors simultaneously
+
+#### API Endpoint Tests (`__tests__/api/users.test.ts`) - 14 tests
+
+- **POST /api/users/register**:
+  - Successful registration with valid data
+  - Validation errors for invalid first name, last name, email, password
+  - Non-Gmail email rejection
+  - test@gmail.com rejection
+  - Weak password rejection
+  - Email already exists (409 conflict)
+  - Database error handling (500)
+  - Missing fields validation
+
+- **GET /api/users**:
+  - Returns all users successfully
+  - Returns empty array when no users exist
+  - Database error handling
+
+- **DELETE /api/users/:email**:
+  - Successful user deletion
+  - User not found (404)
+  - Database error handling
+
+- **Health Check** (GET /health): API running status
+- **404 Handler**: Unknown routes return 404
+
+Run API tests with:
+```bash
+npm run test:api
+```
+
+**Test Results**: ✅ All 31 API tests pass successfully in ~0.8 seconds
+
+Run all tests:
+```bash
+npm run test:all
+```
+
+**Combined Results**: ✅ All 66 tests (35 frontend + 31 API) pass successfully
 
 ## Accessibility Features
 
