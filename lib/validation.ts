@@ -3,6 +3,30 @@ export interface ValidationResult {
   message?: string;
 }
 
+export const validateFirstName = (firstName: string): ValidationResult => {
+  if (!firstName) {
+    return { isValid: false, message: 'First name is required' };
+  }
+
+  if (firstName.trim().length < 2) {
+    return { isValid: false, message: 'First name must be at least 2 characters' };
+  }
+
+  return { isValid: true };
+};
+
+export const validateLastName = (lastName: string): ValidationResult => {
+  if (!lastName) {
+    return { isValid: false, message: 'Last name is required' };
+  }
+
+  if (lastName.trim().length < 2) {
+    return { isValid: false, message: 'Last name must be at least 2 characters' };
+  }
+
+  return { isValid: true };
+};
+
 export const validateEmail = (email: string): ValidationResult => {
   if (!email) {
     return { isValid: false, message: 'Email is required' };
@@ -19,6 +43,11 @@ export const validateEmail = (email: string): ValidationResult => {
     return { isValid: false, message: 'Only Gmail addresses are accepted' };
   }
 
+  // Check for already registered email
+  if (email.toLowerCase() === 'test@gmail.com') {
+    return { isValid: false, message: 'This email address is already registered' };
+  }
+
   return { isValid: true };
 };
 
@@ -28,7 +57,11 @@ export const validatePassword = (password: string): ValidationResult => {
   }
 
   if (password.length < 8) {
-    return { isValid: false, message: 'Password must be at least 8 characters long' };
+    return { isValid: false, message: 'Password must be at least 8 characters' };
+  }
+
+  if (password.length > 30) {
+    return { isValid: false, message: 'Password must not exceed 30 characters' };
   }
 
   const hasUpperCase = /[A-Z]/.test(password);
@@ -50,58 +83,6 @@ export const validatePassword = (password: string): ValidationResult => {
 
   if (!hasSpecialChar) {
     return { isValid: false, message: 'Password must contain at least one special character' };
-  }
-
-  return { isValid: true };
-};
-
-export const validateConfirmPassword = (
-  password: string,
-  confirmPassword: string
-): ValidationResult => {
-  if (!confirmPassword) {
-    return { isValid: false, message: 'Please confirm your password' };
-  }
-
-  if (password !== confirmPassword) {
-    return { isValid: false, message: 'Passwords do not match' };
-  }
-
-  return { isValid: true };
-};
-
-export const validateDateOfBirth = (dob: string): ValidationResult => {
-  if (!dob) {
-    return { isValid: false, message: 'Date of birth is required' };
-  }
-
-  const date = new Date(dob);
-  const today = new Date();
-
-  if (isNaN(date.getTime())) {
-    return { isValid: false, message: 'Please enter a valid date' };
-  }
-
-  if (date >= today) {
-    return { isValid: false, message: 'Date of birth must be in the past' };
-  }
-
-  const age = today.getFullYear() - date.getFullYear();
-  const monthDiff = today.getMonth() - date.getMonth();
-  const dayDiff = today.getDate() - date.getDate();
-
-  const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
-
-  if (actualAge < 18) {
-    return { isValid: false, message: 'You must be at least 18 years old' };
-  }
-
-  return { isValid: true };
-};
-
-export const validateTerms = (accepted: boolean): ValidationResult => {
-  if (!accepted) {
-    return { isValid: false, message: 'You must accept the terms and conditions' };
   }
 
   return { isValid: true };

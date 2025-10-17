@@ -2,22 +2,19 @@
 
 import React, { useState } from 'react';
 import { Input } from './Input';
-import { Checkbox } from './Checkbox';
 import { FormData, FieldError, FormState } from '@/lib/types';
 import {
+  validateFirstName,
+  validateLastName,
   validateEmail,
   validatePassword,
-  validateConfirmPassword,
-  validateDateOfBirth,
-  validateTerms,
 } from '@/lib/validation';
 
 const initialFormData: FormData = {
+  firstName: '',
+  lastName: '',
   email: '',
   password: '',
-  confirmPassword: '',
-  dateOfBirth: '',
-  termsAccepted: false,
 };
 
 export const RegistrationForm: React.FC = () => {
@@ -27,24 +24,21 @@ export const RegistrationForm: React.FC = () => {
   const [formState, setFormState] = useState<FormState>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validateField = (name: keyof FormData, value: string | boolean): string | undefined => {
+  const validateField = (name: keyof FormData, value: string): string | undefined => {
     let result;
 
     switch (name) {
+      case 'firstName':
+        result = validateFirstName(value);
+        break;
+      case 'lastName':
+        result = validateLastName(value);
+        break;
       case 'email':
-        result = validateEmail(value as string);
+        result = validateEmail(value);
         break;
       case 'password':
-        result = validatePassword(value as string);
-        break;
-      case 'confirmPassword':
-        result = validateConfirmPassword(formData.password, value as string);
-        break;
-      case 'dateOfBirth':
-        result = validateDateOfBirth(value as string);
-        break;
-      case 'termsAccepted':
-        result = validateTerms(value as boolean);
+        result = validatePassword(value);
         break;
       default:
         return undefined;
@@ -54,44 +48,33 @@ export const RegistrationForm: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     const fieldName = name as keyof FormData;
-    const fieldValue = type === 'checkbox' ? checked : value;
 
     setFormData((prev) => ({
       ...prev,
-      [fieldName]: fieldValue,
+      [fieldName]: value,
     }));
 
     // Validate on change if field has been touched
     if (touchedFields.has(fieldName)) {
-      const error = validateField(fieldName, fieldValue);
+      const error = validateField(fieldName, value);
       setErrors((prev) => ({
         ...prev,
         [fieldName]: error,
       }));
     }
-
-    // Also revalidate confirmPassword when password changes
-    if (fieldName === 'password' && touchedFields.has('confirmPassword')) {
-      const confirmError = validateConfirmPassword(value, formData.confirmPassword);
-      setErrors((prev) => ({
-        ...prev,
-        confirmPassword: confirmError.isValid ? undefined : confirmError.message,
-      }));
-    }
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     const fieldName = name as keyof FormData;
-    const fieldValue = type === 'checkbox' ? checked : value;
 
     // Mark field as touched
     setTouchedFields((prev) => new Set(prev).add(fieldName));
 
     // Validate on blur
-    const error = validateField(fieldName, fieldValue);
+    const error = validateField(fieldName, value);
     setErrors((prev) => ({
       ...prev,
       [fieldName]: error,
@@ -169,10 +152,54 @@ export const RegistrationForm: React.FC = () => {
   return (
     <div className="form-container">
       <div className="form-card">
+        <div className="logo-container">
+          <svg className="logo" viewBox="0 0 647 647" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#000000" d="M40.44,647h566.13c22.33,0,40.44-18.1,40.44-40.44H0c0,22.33,18.1,40.44,40.44,40.44ZM564.65,324.98H82.35c0,13.27,1.09,26.27,3.15,38.96H0v40.44h95.75c5.21,14.95,11.86,29.24,19.77,42.68H0v40.44h145.35c13.19,14.45,28.12,27.29,44.46,38.19H0v40.44h647v-40.44h-189.81c16.33-10.9,31.26-23.74,44.46-38.19h145.35v-40.44h-115.51c7.91-13.45,14.55-27.73,19.77-42.68h95.75v-40.44h-85.5c2.06-12.68,3.15-25.69,3.15-38.96ZM606.56,0H40.44C18.1,0,0,18.1,0,40.44v283.06h82.37c.8-132.5,108.44-239.67,241.13-239.67s240.33,107.17,241.13,239.67h82.37V40.44c0-22.33-18.1-40.44-40.44-40.44Z"/>
+          </svg>
+          <span className="logo-text">Goldenset</span>
+        </div>
         <h1 className="form-title">Create Your Account</h1>
-        <p className="form-subtitle">Join us today and get started</p>
+        <p className="form-subtitle">Join us and unlock the full potential of your content</p>
 
         <form onSubmit={handleSubmit} className="registration-form" noValidate>
+          <div className="form-field">
+            <label htmlFor="firstName" className="form-label">
+              First Name <span className="required">*</span>
+            </label>
+            <Input
+              type="text"
+              id="firstName"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="John"
+              error={errors.firstName}
+              touched={touchedFields.has('firstName')}
+              required
+              autoComplete="given-name"
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="lastName" className="form-label">
+              Last Name <span className="required">*</span>
+            </label>
+            <Input
+              type="text"
+              id="lastName"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Doe"
+              error={errors.lastName}
+              touched={touchedFields.has('lastName')}
+              required
+              autoComplete="family-name"
+            />
+          </div>
+
           <div className="form-field">
             <label htmlFor="email" className="form-label">
               Email Address <span className="required">*</span>
@@ -190,6 +217,7 @@ export const RegistrationForm: React.FC = () => {
               required
               autoComplete="email"
             />
+            <p className="field-hint">Please use your Gmail address for registration</p>
           </div>
 
           <div className="form-field">
@@ -224,62 +252,11 @@ export const RegistrationForm: React.FC = () => {
                 <li className={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'requirement-met' : ''}>
                   At least one special character
                 </li>
-                <li className={formData.password.length >= 8 ? 'requirement-met' : ''}>
-                  At least 8 characters long
+                <li className={formData.password.length >= 8 && formData.password.length <= 30 ? 'requirement-met' : ''}>
+                  Between 8 and 30 characters
                 </li>
               </ul>
             </div>
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="confirmPassword" className="form-label">
-              Confirm Password <span className="required">*</span>
-            </label>
-            <Input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              placeholder="Confirm your password"
-              error={errors.confirmPassword}
-              touched={touchedFields.has('confirmPassword')}
-              required
-              autoComplete="new-password"
-            />
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="dateOfBirth" className="form-label">
-              Date of Birth <span className="required">*</span>
-            </label>
-            <Input
-              type="date"
-              id="dateOfBirth"
-              name="dateOfBirth"
-              value={formData.dateOfBirth}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.dateOfBirth}
-              touched={touchedFields.has('dateOfBirth')}
-              required
-              autoComplete="bday"
-            />
-          </div>
-
-          <div className="form-field">
-            <Checkbox
-              id="termsAccepted"
-              name="termsAccepted"
-              checked={formData.termsAccepted}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              label="I accept the terms and conditions"
-              error={errors.termsAccepted}
-              touched={touchedFields.has('termsAccepted')}
-              required
-            />
           </div>
 
           <div className={`form-status ${formState !== 'idle' ? `status-${formState}` : ''}`}>
@@ -294,7 +271,7 @@ export const RegistrationForm: React.FC = () => {
                 <span className="status-icon">✕</span>
                 <span>
                   {hasAnyErrors
-                    ? 'Please fix the errors above and try again.'
+                    ? 'Please check the information above and try again.'
                     : 'Registration failed. Please try again.'}
                 </span>
               </div>
@@ -302,7 +279,7 @@ export const RegistrationForm: React.FC = () => {
             {formState === 'success' && (
               <div className="status-message status-success">
                 <span className="status-icon">✓</span>
-                <span>Registration successful! Welcome aboard!</span>
+                <span>Welcome to Goldenset! Your account has been created successfully!</span>
               </div>
             )}
           </div>
@@ -317,7 +294,7 @@ export const RegistrationForm: React.FC = () => {
         </form>
 
         <p className="form-footer">
-          Already have an account? <a href="#" className="form-link">Sign in</a>
+          By creating an account, you agree to Goldenset&apos;s Terms of Service and Privacy Policy.
         </p>
       </div>
     </div>

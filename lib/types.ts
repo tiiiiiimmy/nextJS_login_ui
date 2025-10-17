@@ -1,19 +1,17 @@
 export type FormState = 'idle' | 'warning' | 'failure' | 'success';
 
 export interface FormData {
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
-  confirmPassword: string;
-  dateOfBirth: string;
-  termsAccepted: boolean;
 }
 
 export interface FieldError {
+  firstName?: string;
+  lastName?: string;
   email?: string;
   password?: string;
-  confirmPassword?: string;
-  dateOfBirth?: string;
-  termsAccepted?: string;
 }
 
 export interface FormStateData {
