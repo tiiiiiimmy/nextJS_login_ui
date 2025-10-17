@@ -230,6 +230,8 @@ npm test
 - Safari (latest)
 - Edge (latest)
 
+⚠️ **Important Note**: When previewing the page, please disable all browser extensions/plugins. Some extensions (such as password managers like Bitwarden) may inject attributes into the DOM, which can cause React hydration mismatch errors. For the best development experience, use an incognito/private window without extensions enabled.
+
 ## Design Decisions
 
 ### Why No UI Library?
