@@ -35,7 +35,14 @@ const isAllowedOrigin = (origin?: string | null) => {
 };
 
 const corsOptions: CorsOptions = {
-  origin: (origin, cb) => (isAllowedOrigin(origin) ? cb(null, true) : cb(new Error(`Not allowed by CORS: ${origin}`))),
+  origin: (origin, cb) => {
+    if (isAllowedOrigin(origin)) {
+      cb(null, true);
+    } else {
+      console.warn(`[CORS] Blocked origin: ${origin}`);
+      cb(null, false);
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
