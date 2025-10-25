@@ -30,7 +30,13 @@ const isAllowedOrigin = (origin?: string | null) => {
   if (!origin) return true; // same-origin / curl
   if (ALLOWED_ORIGINS.includes(origin)) return true;
 
+  // Allow CodeSandbox URLs
   if (/\.csb\.app$/i.test(origin)) return true;
+
+  // Allow localhost for development
+  if (/^http:\/\/localhost(:\d+)?$/i.test(origin)) return true;
+  if (/^http:\/\/127\.0\.0\.1(:\d+)?$/i.test(origin)) return true;
+
   return false;
 };
 
@@ -75,7 +81,7 @@ app.get('/health', (_req: Request, res: Response) => {
 
 app.use('/api/users', usersRouter);
 
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
@@ -96,7 +102,7 @@ if (process.env.NODE_ENV !== 'test') {
     if (ALLOWED_ORIGINS.length) {
       console.log(`CORS allow-list: ${ALLOWED_ORIGINS.join(', ')}`);
     } else {
-      console.log('CORS allow-list: *.csb.app (dynamic) + same-origin');
+      console.log('CORS allow-list: *.csb.app + localhost + same-origin');
     }
   });
 }
