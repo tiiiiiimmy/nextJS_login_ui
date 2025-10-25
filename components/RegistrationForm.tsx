@@ -127,7 +127,7 @@ export const RegistrationForm: React.FC = () => {
       setFormState("warning");
 
       const response = await fetch(
-        "https://l8nwvw-5001.csb.app/api/users/register",
+        "http://localhost:5001/api/users/register",
         {
           method: "POST",
           headers: {
@@ -164,7 +164,7 @@ export const RegistrationForm: React.FC = () => {
           });
         }
       }
-    } catch (error) {
+    } catch {
       // Network or other error
       setFormState("failure");
       setErrors({
@@ -176,7 +176,7 @@ export const RegistrationForm: React.FC = () => {
   };
 
   const hasAnyErrors = Object.values(errors).some(
-    (error) => error !== undefined
+    (err) => err !== undefined
   );
 
   return (
