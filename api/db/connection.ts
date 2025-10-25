@@ -1,5 +1,5 @@
 // api/db/connection.ts
-import { Pool, PoolConfig, PoolClient, QueryResult } from "pg";
+import { Pool, PoolConfig, PoolClient, QueryResult, QueryResultRow } from "pg";
 import dotenv from "dotenv";
 import path from "path";
 
@@ -149,7 +149,7 @@ export function getPool(): Pool {
  * - Avoid logging full text for sensitive queries in production.
  * - Returns the raw QueryResult from 'pg'.
  */
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
@@ -162,7 +162,7 @@ export async function query<T = any>(
 
   try {
     client = await pool.connect();
-    const res = await client.query<T>(text, params);
+    const res = await client.query(text, params);
     const duration = Date.now() - start;
 
     // Safe-ish logging: do not print parameters in production logs.
